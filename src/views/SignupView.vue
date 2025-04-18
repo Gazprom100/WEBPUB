@@ -106,7 +106,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import { authApi } from '@/services/api'
 
 const router = useRouter()
 const isLoading = ref(false)
@@ -184,8 +184,7 @@ const handleSubmit = async () => {
 
   isLoading.value = true
   try {
-    const response = await axios.post('/api/auth/signup', {
-      name: form.name,
+    const response = await authApi.signup({
       email: form.email,
       password: form.password
     })
@@ -198,25 +197,8 @@ const handleSubmit = async () => {
       router.push('/login?signup=success')
     }
   } catch (error) {
-    // Более детальная обработка ошибок
-    if (error.response?.status === 409) {
-      errors.email = 'This email is already registered'
-    } else if (error.response?.data?.errors) {
-      // Обработка валидационных ошибок с бэкенда
-      const backendErrors = error.response.data.errors
-      Object.keys(backendErrors).forEach(field => {
-        if (errors[field]) {
-          errors[field] = backendErrors[field]
-        }
-      })
-    } else if (error.response?.data?.message) {
-      // Общая ошибка с сообщением
-      const errorField = error.response.data.field || 'email'
-      errors[errorField] = error.response.data.message
-    } else {
-      // Общая ошибка без деталей
-      errors.email = 'Registration failed. Please try again later.'
-    }
+    console.error('Signup error:', error)
+    errors.email = error.response?.data?.message || 'Registration failed. Please try again later.'
   } finally {
     isLoading.value = false
   }
