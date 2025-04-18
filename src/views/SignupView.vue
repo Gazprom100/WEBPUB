@@ -131,17 +131,19 @@ const errors = reactive({
 
 const validateForm = () => {
   let isValid = true
-  errors.name = ''
-  errors.email = ''
-  errors.password = ''
-  errors.confirmPassword = ''
-  errors.acceptTerms = ''
+  // Очищаем предыдущие ошибки
+  Object.keys(errors).forEach(key => errors[key] = '')
 
+  // Валидация имени
   if (!form.name.trim()) {
     errors.name = 'Name is required'
     isValid = false
+  } else if (form.name.length < 2) {
+    errors.name = 'Name must be at least 2 characters'
+    isValid = false
   }
 
+  // Валидация email
   if (!form.email.trim()) {
     errors.email = 'Email is required'
     isValid = false
@@ -150,19 +152,25 @@ const validateForm = () => {
     isValid = false
   }
 
+  // Валидация пароля
   if (!form.password) {
     errors.password = 'Password is required'
     isValid = false
   } else if (form.password.length < 8) {
     errors.password = 'Password must be at least 8 characters'
     isValid = false
+  } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(form.password)) {
+    errors.password = 'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+    isValid = false
   }
 
+  // Валидация подтверждения пароля
   if (form.password !== form.confirmPassword) {
     errors.confirmPassword = 'Passwords do not match'
     isValid = false
   }
 
+  // Валидация согласия с условиями
   if (!form.acceptTerms) {
     errors.acceptTerms = 'You must accept the terms and conditions'
     isValid = false
@@ -176,17 +184,38 @@ const handleSubmit = async () => {
 
   isLoading.value = true
   try {
-    await axios.post('/api/auth/signup', {
+    const response = await axios.post('/api/auth/signup', {
       name: form.name,
       email: form.email,
       password: form.password
     })
-    router.push('/login?signup=success')
-  } catch (error) {
-    if (error.response?.data?.message) {
-      errors.email = error.response.data.message
+    
+    if (response.data?.token) {
+      // Сохраняем токен
+      localStorage.setItem('token', response.data.token)
+      router.push('/dashboard')
     } else {
-      errors.email = 'An error occurred. Please try again.'
+      router.push('/login?signup=success')
+    }
+  } catch (error) {
+    // Более детальная обработка ошибок
+    if (error.response?.status === 409) {
+      errors.email = 'This email is already registered'
+    } else if (error.response?.data?.errors) {
+      // Обработка валидационных ошибок с бэкенда
+      const backendErrors = error.response.data.errors
+      Object.keys(backendErrors).forEach(field => {
+        if (errors[field]) {
+          errors[field] = backendErrors[field]
+        }
+      })
+    } else if (error.response?.data?.message) {
+      // Общая ошибка с сообщением
+      const errorField = error.response.data.field || 'email'
+      errors[errorField] = error.response.data.message
+    } else {
+      // Общая ошибка без деталей
+      errors.email = 'Registration failed. Please try again later.'
     }
   } finally {
     isLoading.value = false
