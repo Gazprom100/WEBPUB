@@ -1,32 +1,50 @@
-from pydantic_settings import BaseSettings
 from typing import List
+from pydantic_settings import BaseSettings
+from pydantic import AnyHttpUrl, validator
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
 class Settings(BaseSettings):
+    PROJECT_NAME: str = "WEBPUB"
+    VERSION: str = "1.0.0"
+    API_V1_STR: str = "/api/v1"
+    
+    # JWT
+    SECRET_KEY: str
+    ALGORITHM: str
+    ACCESS_TOKEN_EXPIRE_MINUTES: int
+    
+    # Database
+    DATABASE_URL: str
+    ASYNC_DATABASE_URL: str
+    
+    # Redis
+    REDIS_URL: str
+    
+    # CORS
+    BACKEND_CORS_ORIGINS: List[str] = []
+
+    @validator("BACKEND_CORS_ORIGINS", pre=True)
+    def assemble_cors_origins(cls, v: str | List[str]) -> List[str] | str:
+        if isinstance(v, str) and not v.startswith("["):
+            return [i.strip() for i in v.split(",")]
+        elif isinstance(v, (list, str)):
+            return v
+        raise ValueError(v)
+
+    # Debug
+    DEBUG: bool = False
+
     # Application
     APP_NAME: str = "CryptoCMS"
-    DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
     # Security
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
-    
-    # CORS
-    CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://localhost:8000",
-    ]
-    
-    # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/cryptocms")
-    
-    # Redis
-    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     
     # Telegram
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
@@ -50,5 +68,6 @@ class Settings(BaseSettings):
     
     class Config:
         case_sensitive = True
+        env_file = ".env"
 
 settings = Settings() 
