@@ -1,9 +1,11 @@
-from sqlalchemy import Boolean, Column, String, Integer, ForeignKey, Float, JSON, DateTime, Enum
+from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, Float, JSON, DateTime, Enum
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-import enum
+import uuid
 from datetime import datetime
+import enum
 
-from app.models.base import Base
+from .base import Base
 
 
 class PostStatus(str, enum.Enum):
@@ -13,9 +15,12 @@ class PostStatus(str, enum.Enum):
 
 
 class Post(Base):
-    title = Column(String, nullable=False)
+    __tablename__ = "posts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title = Column(String)
     description = Column(String)
-    content = Column(String, nullable=False)
+    content = Column(String)
     status = Column(Enum(PostStatus), default=PostStatus.DRAFT)
     
     # Publishing
@@ -39,12 +44,13 @@ class Post(Base):
     metadata = Column(JSON, default={})
     
     # Foreign keys
-    author_id = Column(Integer, ForeignKey("user.id"), nullable=False)
-    channel_id = Column(Integer, ForeignKey("channel.id"), nullable=False)
+    author_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    channel_id = Column(UUID(as_uuid=True), ForeignKey("channels.id"), nullable=False)
     
     # Relationships
     author = relationship("User", back_populates="posts")
     channel = relationship("Channel", back_populates="posts")
+    metrics = relationship("PostMetrics", back_populates="post")
     
     def __repr__(self):
         return f"<Post {self.title}>" 

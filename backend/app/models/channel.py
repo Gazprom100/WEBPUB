@@ -1,10 +1,11 @@
-from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, Float, JSON
+from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, Float, JSON, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
-from .base import BaseModel
+from datetime import datetime
+from .base import Base
 
-class Channel(BaseModel):
+class Channel(Base):
     __tablename__ = "channels"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -26,11 +27,15 @@ class Channel(BaseModel):
     metadata = Column(JSON, default={})
     
     # Foreign keys
-    owner_id = Column(Integer, ForeignKey("user.id"), nullable=False)
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     
     # Relationships
     owner = relationship("User", back_populates="channels")
     posts = relationship("Post", back_populates="channel")
+    metrics = relationship("ChannelMetrics", back_populates="channel")
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def __repr__(self):
         return f"<Channel {self.username}>" 
