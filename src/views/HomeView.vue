@@ -31,7 +31,7 @@
           <div class="element element-3"></div>
         </div>
         <div class="hero-image">
-          <img src="@/assets/dashboard-preview.png" alt="Dashboard Preview" />
+          <img src="@/assets/dashboard-preview.svg" alt="Dashboard Preview" />
         </div>
       </div>
     </section>
