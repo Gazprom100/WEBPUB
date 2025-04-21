@@ -6,7 +6,11 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/cryptocms
+      - MONGODB_URL=mongodb://mongo:27017
+      - MONGODB_DB_NAME=webpub
+      - SECRET_KEY=your-secret-key-replace-in-production
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
       - REDIS_URL=redis://redis:6379/0
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - GPT_API_KEY=${GPT_API_KEY}
@@ -15,28 +19,43 @@ services:
       - AWS_REGION=${AWS_REGION}
       - S3_BUCKET=${S3_BUCKET}
     depends_on:
-      - db
+      - mongo
       - redis
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
-    build: ./frontend
+    build: .
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-    depends_on:
-      - backend
-
-  db:
-    image: postgres:15-alpine
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=cryptocms
+      - VITE_API_URL=http://localhost:8000
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./src:/app/src
+      - ./public:/app/public
+    command: npm run dev
+
+  mongo:
+    image: mongo:5.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=webpub
+
+  mongo-express:
+    image: mongo-express
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=mongo
+      - ME_CONFIG_MONGODB_PORT=27017
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=password
+    depends_on:
+      - mongo
 
   redis:
     image: redis:7-alpine
@@ -49,24 +68,26 @@ services:
     build: ./backend
     command: celery -A app.celery_app worker --loglevel=info
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/cryptocms
+      - MONGODB_URL=mongodb://mongo:27017
+      - MONGODB_DB_NAME=webpub
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       - backend
       - redis
-      - db
+      - mongo
 
   celery-beat:
     build: ./backend
     command: celery -A app.celery_app beat --loglevel=info
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/cryptocms
+      - MONGODB_URL=mongodb://mongo:27017
+      - MONGODB_DB_NAME=webpub
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       - backend
       - redis
-      - db
+      - mongo
 
 volumes:
-  postgres_data:
+  mongodb_data:
   redis_data:

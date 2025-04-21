@@ -2,19 +2,19 @@
   <div class="signup-view">
     <div class="signup-container">
       <div class="signup-header">
-        <h1>Create Account</h1>
-        <p>Join our platform to start managing your social media content</p>
+        <h1>Создать аккаунт</h1>
+        <p>Присоединяйтесь к нашей платформе для управления вашим контентом</p>
       </div>
 
       <form @submit.prevent="handleSubmit" class="signup-form">
         <div class="form-group">
-          <label for="name">Full Name</label>
+          <label for="name">Полное имя</label>
           <input
             type="text"
             id="name"
             v-model="form.name"
             required
-            placeholder="Enter your full name"
+            placeholder="Введите ваше полное имя"
             :class="{ 'error': errors.name }"
           />
           <span v-if="errors.name" class="error-message">{{ errors.name }}</span>
@@ -27,21 +27,21 @@
             id="email"
             v-model="form.email"
             required
-            placeholder="Enter your email"
+            placeholder="Введите ваш email"
             :class="{ 'error': errors.email }"
           />
           <span v-if="errors.email" class="error-message">{{ errors.email }}</span>
         </div>
 
         <div class="form-group">
-          <label for="password">Password</label>
+          <label for="password">Пароль</label>
           <div class="password-input">
             <input
               :type="showPassword ? 'text' : 'password'"
               id="password"
               v-model="form.password"
               required
-              placeholder="Create a password"
+              placeholder="Создайте пароль"
               :class="{ 'error': errors.password }"
             />
             <button
@@ -56,14 +56,14 @@
         </div>
 
         <div class="form-group">
-          <label for="confirmPassword">Confirm Password</label>
+          <label for="confirmPassword">Подтверждение пароля</label>
           <div class="password-input">
             <input
               :type="showConfirmPassword ? 'text' : 'password'"
               id="confirmPassword"
               v-model="form.confirmPassword"
               required
-              placeholder="Confirm your password"
+              placeholder="Подтвердите пароль"
               :class="{ 'error': errors.confirmPassword }"
             />
             <button
@@ -85,18 +85,18 @@
               required
               :class="{ 'error': errors.acceptTerms }"
             />
-            <span>I agree to the <a href="/terms" target="_blank">Terms of Service</a> and <a href="/privacy" target="_blank">Privacy Policy</a></span>
+            <span>Я согласен с <a href="/terms" target="_blank">Условиями использования</a> и <a href="/privacy" target="_blank">Политикой конфиденциальности</a></span>
           </label>
           <span v-if="errors.acceptTerms" class="error-message">{{ errors.acceptTerms }}</span>
         </div>
 
         <button type="submit" class="btn btn-primary" :disabled="isLoading">
           <span v-if="isLoading" class="spinner"></span>
-          {{ isLoading ? 'Creating Account...' : 'Create Account' }}
+          {{ isLoading ? 'Создание аккаунта...' : 'Создать аккаунт' }}
         </button>
 
         <div class="form-footer">
-          <p>Already have an account? <router-link to="/login">Sign in</router-link></p>
+          <p>Уже есть аккаунт? <router-link to="/login">Войти</router-link></p>
         </div>
       </form>
     </div>
@@ -106,9 +106,10 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { authApi } from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const auth = useAuthStore()
 const isLoading = ref(false)
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
@@ -136,43 +137,43 @@ const validateForm = () => {
 
   // Валидация имени
   if (!form.name.trim()) {
-    errors.name = 'Name is required'
+    errors.name = 'Имя обязательно для заполнения'
     isValid = false
   } else if (form.name.length < 2) {
-    errors.name = 'Name must be at least 2 characters'
+    errors.name = 'Имя должно содержать не менее 2 символов'
     isValid = false
   }
 
   // Валидация email
   if (!form.email.trim()) {
-    errors.email = 'Email is required'
+    errors.email = 'Email обязателен для заполнения'
     isValid = false
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-    errors.email = 'Please enter a valid email'
+    errors.email = 'Пожалуйста, введите корректный email'
     isValid = false
   }
 
   // Валидация пароля
   if (!form.password) {
-    errors.password = 'Password is required'
+    errors.password = 'Пароль обязателен для заполнения'
     isValid = false
   } else if (form.password.length < 8) {
-    errors.password = 'Password must be at least 8 characters'
+    errors.password = 'Пароль должен содержать не менее 8 символов'
     isValid = false
   } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(form.password)) {
-    errors.password = 'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+    errors.password = 'Пароль должен содержать как минимум одну заглавную букву, одну строчную букву и одну цифру'
     isValid = false
   }
 
   // Валидация подтверждения пароля
   if (form.password !== form.confirmPassword) {
-    errors.confirmPassword = 'Passwords do not match'
+    errors.confirmPassword = 'Пароли не совпадают'
     isValid = false
   }
 
   // Валидация согласия с условиями
   if (!form.acceptTerms) {
-    errors.acceptTerms = 'You must accept the terms and conditions'
+    errors.acceptTerms = 'Вы должны принять условия использования'
     isValid = false
   }
 
@@ -184,21 +185,17 @@ const handleSubmit = async () => {
 
   isLoading.value = true
   try {
-    const response = await authApi.signup({
+    await auth.register({
+      full_name: form.name,
       email: form.email,
       password: form.password
     })
     
-    if (response.data?.token) {
-      // Сохраняем токен
-      localStorage.setItem('token', response.data.token)
-      router.push('/dashboard')
-    } else {
-      router.push('/login?signup=success')
-    }
+    // После успешной регистрации перенаправляем на страницу входа или сразу аутентифицируем
+    router.push('/login?signup=success')
   } catch (error) {
-    console.error('Signup error:', error)
-    errors.email = error.response?.data?.message || 'Registration failed. Please try again later.'
+    console.error('Ошибка регистрации:', error)
+    errors.email = error.response?.data?.detail || 'Регистрация не удалась. Пожалуйста, попробуйте позже.'
   } finally {
     isLoading.value = false
   }
@@ -258,35 +255,29 @@ const handleSubmit = async () => {
   margin-bottom: 0.5rem;
   font-weight: 500;
   color: #2d3748;
-  font-size: 0.95rem;
 }
 
-.form-group input {
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"] {
   width: 100%;
-  padding: 0.875rem 1rem;
-  border: 2px solid #e2e8f0;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
+  background-color: #f8fafc;
   font-size: 1rem;
-  transition: all 0.2s ease;
-  background: #f8fafc;
+  color: #1a202c;
+  transition: all 0.2s;
 }
 
 .form-group input:focus {
-  outline: none;
   border-color: #4299e1;
   box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15);
-  background: white;
+  outline: none;
 }
 
 .form-group input.error {
   border-color: #e53e3e;
-}
-
-.error-message {
-  color: #e53e3e;
-  font-size: 0.875rem;
-  margin-top: 0.5rem;
-  display: block;
 }
 
 .password-input {
@@ -295,19 +286,25 @@ const handleSubmit = async () => {
 
 .toggle-password {
   position: absolute;
-  right: 1rem;
+  right: 0.75rem;
   top: 50%;
   transform: translateY(-50%);
   background: none;
   border: none;
   color: #718096;
   cursor: pointer;
-  padding: 0.5rem;
-  transition: color 0.2s ease;
+  padding: 0.25rem;
 }
 
 .toggle-password:hover {
-  color: #2d3748;
+  color: #4a5568;
+}
+
+.error-message {
+  display: block;
+  color: #e53e3e;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
 }
 
 .terms {
@@ -316,103 +313,64 @@ const handleSubmit = async () => {
 
 .checkbox-label {
   display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  cursor: pointer;
-  font-size: 0.95rem;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
   color: #4a5568;
 }
 
 .checkbox-label input[type="checkbox"] {
-  width: 1.25rem;
-  height: 1.25rem;
-  margin-top: 0.25rem;
-  border: 2px solid #cbd5e0;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.checkbox-label input[type="checkbox"]:checked {
-  background: #4299e1;
-  border-color: #4299e1;
+  width: 1rem;
+  height: 1rem;
 }
 
 .checkbox-label a {
   color: #4299e1;
   text-decoration: none;
-  transition: color 0.2s ease;
+  transition: color 0.2s;
 }
 
 .checkbox-label a:hover {
-  color: #3182ce;
+  color: #2b6cb0;
+  text-decoration: underline;
 }
 
 .btn {
-  padding: 0.875rem 1.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
   border-radius: 8px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
   font-size: 1rem;
-  display: inline-flex;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  width: 100%;
-}
-
-.btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
 }
 
 .btn-primary {
-  background: #4299e1;
-  border: 2px solid #4299e1;
+  background-color: #4299e1;
   color: white;
 }
 
-.btn-primary:hover:not(:disabled) {
-  background: #3182ce;
-  border-color: #3182ce;
+.btn-primary:hover {
+  background-color: #3182ce;
+}
+
+.btn-primary:disabled {
+  background-color: #90cdf4;
+  cursor: not-allowed;
 }
 
 .spinner {
-  width: 1.25rem;
-  height: 1.25rem;
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
   border-top-color: white;
-  animation: spin 1s ease-in-out infinite;
-}
-
-.form-footer {
-  text-align: center;
-  margin-top: 1rem;
-  color: #4a5568;
-}
-
-.form-footer a {
-  color: #4299e1;
-  text-decoration: none;
-  font-weight: 500;
-  transition: color 0.2s ease;
-}
-
-.form-footer a:hover {
-  color: #3182ce;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
@@ -421,13 +379,33 @@ const handleSubmit = async () => {
   }
 }
 
-@media (max-width: 640px) {
-  .signup-container {
-    padding: 2rem;
+.form-footer {
+  text-align: center;
+  margin-top: 1.5rem;
+  font-size: 0.875rem;
+  color: #4a5568;
+}
+
+.form-footer a {
+  color: #4299e1;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.form-footer a:hover {
+  color: #2b6cb0;
+  text-decoration: underline;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
   }
-  
-  .signup-header h1 {
-    font-size: 1.75rem;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 </style> 
