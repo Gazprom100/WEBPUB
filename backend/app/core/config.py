@@ -1,8 +1,9 @@
-from typing import List
+from typing import List, Optional
 from pydantic_settings import BaseSettings
 from pydantic import AnyHttpUrl, validator
 import os
 from dotenv import load_dotenv
+from functools import lru_cache
 
 load_dotenv()
 
@@ -66,8 +67,16 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
     EMAIL_FROM: str = os.getenv("EMAIL_FROM", "noreply@cryptocms.com")
     
+    # MongoDB settings
+    MONGODB_URL: str = "mongodb://localhost:27017"
+    MONGODB_DB_NAME: str = "webpub"
+    
     class Config:
         case_sensitive = True
         env_file = ".env"
 
-settings = Settings() 
+@lru_cache()
+def get_settings() -> Settings:
+    return Settings()
+
+settings = get_settings() 

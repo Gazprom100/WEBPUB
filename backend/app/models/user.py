@@ -1,33 +1,32 @@
-from sqlalchemy import Column, String, Boolean, DateTime, Enum
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
-import uuid
 from datetime import datetime
-import enum
+from typing import Optional, List
+from beanie import Document, Link
+from pydantic import EmailStr
+from enum import Enum
 
-from .base import Base
-
-class UserRole(str, enum.Enum):
+class UserRole(str, Enum):
     ADMIN = "admin"
     USER = "user"
     MODERATOR = "moderator"
 
-class User(Base):
-    __tablename__ = "users"
+class User(Document):
+    email: EmailStr
+    hashed_password: str
+    full_name: Optional[str] = None
+    is_active: bool = True
+    is_superuser: bool = False
+    role: UserRole = UserRole.USER
+    created_at: datetime = datetime.utcnow()
+    updated_at: datetime = datetime.utcnow()
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    email = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
-    full_name = Column(String)
-    is_active = Column(Boolean, default=True)
-    is_superuser = Column(Boolean, default=False)
-    role = Column(Enum(UserRole), default=UserRole.USER)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # Relationships
-    channels = relationship("Channel", back_populates="owner")
-    posts = relationship("Post", back_populates="author")
-
-    def __repr__(self):
-        return f"<User {self.email}>" 
+    class Settings:
+        name = "users"
+        
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "email": "user@example.com",
+                "full_name": "John Doe",
+                "role": "user"
+            }
+        } 

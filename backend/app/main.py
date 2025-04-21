@@ -1,30 +1,30 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .api import auth, channels, posts, metrics, settings
-from .core.config import settings as app_settings
+from .core.mongodb import init_mongodb
 
-app = FastAPI(
-    title="CryptoCMS API",
-    description="API for managing Telegram channel content",
-    version="1.0.0"
-)
+app = FastAPI(title="WEBPUB API")
 
-# CORS middleware
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=app_settings.CORS_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Include routers
-app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
-app.include_router(channels.router, prefix="/api/channels", tags=["channels"])
-app.include_router(posts.router, prefix="/api/posts", tags=["posts"])
-app.include_router(metrics.router, prefix="/api/metrics", tags=["metrics"])
-app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
+app.include_router(auth.router, prefix="/auth", tags=["auth"])
+app.include_router(channels.router, prefix="/channels", tags=["channels"])
+app.include_router(posts.router, prefix="/posts", tags=["posts"])
+app.include_router(metrics.router, prefix="/metrics", tags=["metrics"])
+app.include_router(settings.router, prefix="/settings", tags=["settings"])
+
+@app.on_event("startup")
+async def startup_event():
+    await init_mongodb()
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to CryptoCMS API"} 
+    return {"message": "Welcome to WEBPUB API"} 
