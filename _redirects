@@ -1,0 +1,5 @@
+# Прокси для API запросов
+/api/*  https://webpub-backend.netlify.app/.netlify/functions/api/:splat  200
+
+# SPA fallback - должен быть последним
+/*      /index.html   200 

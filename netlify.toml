@@ -10,6 +10,27 @@
 [[plugins]]
   package = "@netlify/plugin-functions-install-core"
 
+# Прокси для API запросов - обход CORS
+# Важно: этот редирект должен быть перед "*" редиректом!
+[[redirects]]
+  from = "/api/*"
+  to = "https://webpub-backend.netlify.app/.netlify/functions/api/:splat"
+  status = 200
+  force = true
+
+# Дополнительный редирект для запросов непосредственно к API
+[[redirects]]
+  from = "/.netlify/functions/api/*"
+  to = "https://webpub-backend.netlify.app/.netlify/functions/api/:splat"
+  status = 200
+  force = true
+
+# Для SPA этот редирект должен быть последним
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
 # Настройка CORS для функций
 [[headers]]
   for = "/.netlify/functions/*"
@@ -17,18 +38,6 @@
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Headers = "Content-Type, Authorization"
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
-
-# Прокси для API запросов - обход CORS
-[[redirects]]
-  from = "/api/*"
-  to = "https://webpub-backend.netlify.app/.netlify/functions/api/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
 
 [[headers]]
   for = "/*"
