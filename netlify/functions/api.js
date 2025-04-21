@@ -21,18 +21,34 @@ function generateTokens(userId) {
 }
 
 exports.handler = async function(event, context) {
-  // CORS заголовки
+  // Разрешенные домены (добавить здесь все нужные домены)
+  const allowedOrigins = [
+    'https://webpub1.netlify.app',
+    'https://www.webpub1.netlify.app',
+    'http://localhost:3000',
+    'http://localhost:8888'
+  ];
+  
+  // Получаем Origin из запроса
+  const origin = event.headers.origin || event.headers.Origin || '';
+  
+  // Проверяем, разрешен ли домен
+  const isAllowedOrigin = allowedOrigins.includes(origin);
+  
+  // CORS заголовки с динамическим Origin
   const headers = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': isAllowedOrigin ? origin : allowedOrigins[0],
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Credentials': 'true',
     'Content-Type': 'application/json'
   };
 
   // Для preflight requests
   if (event.httpMethod === 'OPTIONS') {
+    console.log('Обработка preflight запроса');
     return {
-      statusCode: 200,
+      statusCode: 204, // No content
       headers
     };
   }
@@ -81,7 +97,29 @@ exports.handler = async function(event, context) {
     
     // Логин
     if (path === '/auth/login' && event.httpMethod === 'POST') {
-      const { username, password } = JSON.parse(event.body);
+      console.log('Обработка запроса логина');
+      
+      let parsedBody;
+      try {
+        parsedBody = JSON.parse(event.body);
+      } catch (e) {
+        console.error('Ошибка при разборе JSON', e);
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ detail: 'Invalid JSON body' })
+        };
+      }
+      
+      const { username, password } = parsedBody;
+      
+      if (!username || !password) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ detail: 'Username and password required' })
+        };
+      }
       
       // Находим пользователя
       const user = users.find(u => u.email === username);
