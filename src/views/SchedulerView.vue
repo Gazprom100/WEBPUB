@@ -30,6 +30,13 @@
       <div class="view-controls">
         <button 
           class="view-btn" 
+          :class="{ 'active': currentView === 'timeline' }" 
+          @click="currentView = 'timeline'"
+        >
+          Лента
+        </button>
+        <button 
+          class="view-btn" 
           :class="{ 'active': currentView === 'month' }" 
           @click="currentView = 'month'"
         >
@@ -49,6 +56,55 @@
         >
           День
         </button>
+      </div>
+    </div>
+
+    <!-- Лента публикаций -->
+    <div v-if="currentView === 'timeline'" class="posts-timeline">
+      <div class="timeline-controls">
+        <button class="btn-scroll" @click="scrollTimeline('left')">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <span class="timeline-period">{{ formatTimelinePeriod() }}</span>
+        <button class="btn-scroll" @click="scrollTimeline('right')">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+      
+      <div class="timeline-container" ref="timelineContainer">
+        <div 
+          v-for="(day, index) in timelineDays" 
+          :key="index" 
+          class="timeline-day" 
+          :class="{ 'timeline-today': day.isToday, 'timeline-weekend': day.isWeekend }"
+        >
+          <div class="timeline-day-header">
+            <div class="timeline-weekday">{{ getDayOfWeek(day.date) }}</div>
+            <div class="timeline-date">{{ formatTimelineDate(day.date) }}</div>
+          </div>
+          
+          <div class="timeline-posts">
+            <div v-if="day.posts.length === 0" class="timeline-empty">
+              <div class="timeline-empty-indicator"></div>
+            </div>
+            
+            <div 
+              v-for="(post, postIndex) in day.posts" 
+              :key="postIndex" 
+              class="timeline-post"
+              :class="post.status"
+              @click="openPost(post)"
+            >
+              <div class="timeline-post-time">{{ formatTime(post.publishTime) }}</div>
+              <div class="timeline-post-title">{{ post.title }}</div>
+              <div class="timeline-post-channel">{{ getChannelName(post.channelId) }}</div>
+            </div>
+            
+            <button v-if="day.posts.length < 3" class="timeline-add-btn" @click="createPostAt(day.date)">
+              <i class="fas fa-plus"></i>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -480,6 +536,69 @@ const deletePost = (post) => {
   if (confirm('Вы уверены, что хотите удалить эту публикацию?')) {
     posts.value = posts.value.filter(p => p.id !== post.id)
   }
+}
+
+// Для горизонтальной ленты
+const timelineContainer = ref(null)
+const timelineStartDate = ref(new Date())
+
+// Создаем массив дат для ленты (на 3 месяца вперед)
+const timelineDays = computed(() => {
+  const days = []
+  const startDate = new Date(timelineStartDate.value)
+  
+  // Получаем даты на 3 месяца вперед (примерно 90 дней)
+  for(let i = 0; i < 90; i++) {
+    const date = new Date(startDate)
+    date.setDate(startDate.getDate() + i)
+    
+    const dayOfWeek = date.getDay()
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+    
+    days.push({
+      date,
+      isToday: isSameDay(date, new Date()),
+      isWeekend,
+      posts: getPostsForDay(date)
+    })
+  }
+  
+  return days
+})
+
+// Для форматирования даты в ленте
+const formatTimelineDate = (date) => {
+  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+}
+
+// Получение дня недели для ленты
+const getDayOfWeek = (date) => {
+  const daysOfWeek = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
+  return daysOfWeek[date.getDay()]
+}
+
+// Отображение периода для ленты
+const formatTimelinePeriod = () => {
+  const startDate = timelineDays.value[0].date
+  const endDate = timelineDays.value[timelineDays.value.length - 1].date
+  
+  return `${formatTimelineDate(startDate)} — ${formatTimelineDate(endDate)}`
+}
+
+// Прокрутка ленты
+const scrollTimeline = (direction) => {
+  if (direction === 'left') {
+    timelineStartDate.value = new Date(timelineStartDate.value.setDate(timelineStartDate.value.getDate() - 14))
+  } else {
+    timelineStartDate.value = new Date(timelineStartDate.value.setDate(timelineStartDate.value.getDate() + 14))
+  }
+  
+  // Плавная прокрутка к началу ленты после изменения дат
+  setTimeout(() => {
+    if (timelineContainer.value) {
+      timelineContainer.value.scrollLeft = 0
+    }
+  }, 10)
 }
 
 onMounted(() => {
@@ -1086,5 +1205,198 @@ onMounted(() => {
     top: 6rem;
     width: auto;
   }
+}
+
+/* Лента публикаций */
+.posts-timeline {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.timeline-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background-color: #f7fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.timeline-period {
+  font-weight: 500;
+  color: #4a5568;
+}
+
+.btn-scroll {
+  background-color: #edf2f7;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-scroll:hover {
+  background-color: #e2e8f0;
+}
+
+.timeline-container {
+  display: flex;
+  padding: 1rem;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+.timeline-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.timeline-container::-webkit-scrollbar-track {
+  background: #f7fafc;
+}
+
+.timeline-container::-webkit-scrollbar-thumb {
+  background-color: #cbd5e0;
+  border-radius: 4px;
+}
+
+.timeline-day {
+  flex: 0 0 180px;
+  margin-right: 12px;
+  border-radius: 8px;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.timeline-day:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+.timeline-today {
+  background-color: #ebf8ff;
+  border-color: #90cdf4;
+}
+
+.timeline-weekend {
+  background-color: #f9fafb;
+}
+
+.timeline-day-header {
+  padding: 0.75rem;
+  background-color: #edf2f7;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.timeline-weekday {
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.timeline-date {
+  font-size: 0.85rem;
+  color: #718096;
+  margin-top: 0.25rem;
+}
+
+.timeline-posts {
+  padding: 0.75rem;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.timeline-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timeline-empty-indicator {
+  width: 60%;
+  height: 2px;
+  background-color: #e2e8f0;
+  position: relative;
+}
+
+.timeline-post {
+  padding: 0.75rem;
+  border-radius: 6px;
+  border-left: 3px solid transparent;
+  background-color: white;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.timeline-post:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.timeline-post.published {
+  border-left-color: #38a169;
+}
+
+.timeline-post.draft {
+  border-left-color: #718096;
+}
+
+.timeline-post.scheduled {
+  border-left-color: #3182ce;
+}
+
+.timeline-post-time {
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.timeline-post-title {
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+  max-height: 2.6em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.timeline-post-channel {
+  font-size: 0.75rem;
+  color: #718096;
+}
+
+.timeline-add-btn {
+  background-color: #edf2f7;
+  border: 1px dashed #cbd5e0;
+  border-radius: 6px;
+  height: 36px;
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #718096;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.timeline-add-btn:hover {
+  background-color: #e2e8f0;
 }
 </style> 
