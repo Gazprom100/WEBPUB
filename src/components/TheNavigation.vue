@@ -5,9 +5,9 @@
         WEBPUB
       </router-link>
       <div class="nav-links">
-        <router-link to="/channels">Channels</router-link>
-        <router-link to="/analytics">Analytics</router-link>
-        <router-link to="/monetization">Monetization</router-link>
+        <router-link to="/channels">Каналы</router-link>
+        <router-link to="/analytics">Аналитика</router-link>
+        <router-link to="/monetization">Монетизация</router-link>
       </div>
     </div>
     <div class="nav-right">
@@ -22,8 +22,8 @@
         </div>
       </div>
       <div v-else class="auth-buttons">
-        <router-link to="/login" class="btn btn-login">Log In</router-link>
-        <router-link to="/signup" class="btn btn-signup">Sign Up</router-link>
+        <router-link to="/login" class="btn btn-login">Войти</router-link>
+        <router-link to="/signup" class="btn btn-signup">Регистрация</router-link>
       </div>
     </div>
   </nav>
