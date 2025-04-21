@@ -1,6 +1,6 @@
 // Простая функция для эмуляции API на Netlify
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
+const { randomUUID, createHash } = require('crypto');
 
 // Секрет для JWT
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-here';
@@ -10,7 +10,7 @@ const users = [];
 
 // Хеширование пароля
 function hashPassword(password) {
-  return crypto.createHash('sha256').update(password).digest('hex');
+  return createHash('sha256').update(password).digest('hex');
 }
 
 // Генерация токенов
@@ -55,7 +55,7 @@ exports.handler = async function(event, context) {
       }
       
       // Создаем нового пользователя
-      const userId = crypto.randomUUID();
+      const userId = randomUUID();
       const hashedPassword = hashPassword(password);
       
       users.push({
