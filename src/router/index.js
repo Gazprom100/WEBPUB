@@ -89,6 +89,30 @@ const router = createRouter({
       name: 'monetization',
       component: () => import('../views/MonetizationView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/content-library',
+      name: 'content-library',
+      component: () => import('../views/ContentLibraryView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/scheduler',
+      name: 'scheduler',
+      component: () => import('../views/SchedulerView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/bot-settings',
+      name: 'bot-settings',
+      component: () => import('../views/BotSettingsView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: () => import('../views/SettingsView.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 })
