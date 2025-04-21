@@ -18,13 +18,6 @@
   status = 200
   force = true
 
-# Дополнительный редирект для запросов непосредственно к API
-[[redirects]]
-  from = "/.netlify/functions/api/*"
-  to = "https://webpub-backend.netlify.app/.netlify/functions/api/:splat"
-  status = 200
-  force = true
-
 # Для SPA этот редирект должен быть последним
 [[redirects]]
   from = "/*"
