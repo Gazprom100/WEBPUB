@@ -22,9 +22,11 @@ exports.handler = async function(event, context) {
   
   try {
     // Обработка логина
-    if (path === '/login' && event.httpMethod === 'POST') {
+    if ((path === '/login' || path === '/auth/login') && event.httpMethod === 'POST') {
       const data = JSON.parse(event.body);
       const { username, password } = data;
+      
+      console.log(`Попытка входа: ${username}`);
       
       // Демо-пользователь для тестов
       if (username === 'test@example.com' && password === 'password123') {
@@ -47,7 +49,7 @@ exports.handler = async function(event, context) {
     }
     
     // Обработка запроса данных пользователя
-    if (path === '/me' && event.httpMethod === 'GET') {
+    if ((path === '/me' || path === '/auth/me') && event.httpMethod === 'GET') {
       return {
         statusCode: 200,
         headers,
@@ -61,8 +63,10 @@ exports.handler = async function(event, context) {
     }
     
     // Обработка регистрации
-    if (path === '/signup' && event.httpMethod === 'POST') {
+    if ((path === '/signup' || path === '/auth/signup') && event.httpMethod === 'POST') {
       const data = JSON.parse(event.body);
+      
+      console.log(`Попытка регистрации: ${data.email}`);
       
       return {
         statusCode: 201,
@@ -70,14 +74,17 @@ exports.handler = async function(event, context) {
         body: JSON.stringify({
           id: 'new-user-123',
           email: data.email,
-          full_name: data.full_name,
+          full_name: data.full_name || 'New User',
           is_active: true
         })
       };
     }
     
     // Обработка восстановления пароля
-    if (path === '/forgot-password' && event.httpMethod === 'POST') {
+    if ((path === '/forgot-password' || path === '/auth/forgot-password') && event.httpMethod === 'POST') {
+      const data = JSON.parse(event.body);
+      console.log(`Запрос сброса пароля для: ${data.email}`);
+      
       return {
         statusCode: 200,
         headers,
@@ -87,11 +94,27 @@ exports.handler = async function(event, context) {
       };
     }
     
+    // Тестовый эндпоинт
+    if (path === '/test') {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ 
+          message: 'Локальная аутентификация работает!',
+          timestamp: new Date().toISOString()
+        })
+      };
+    }
+    
     // Неизвестный путь
+    console.log(`Неизвестный путь: ${path}`);
     return {
       statusCode: 404,
       headers,
-      body: JSON.stringify({ detail: 'Route not found' })
+      body: JSON.stringify({ 
+        detail: 'Route not found',
+        path: path 
+      })
     };
     
   } catch (error) {
