@@ -1,16 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-from ..db.session import get_db
-from ..models.channel import TelegramChannel
-from ..models.user import User
+from ..models.channel import Channel
 from ..schemas.channel import (
     ChannelCreate,
     ChannelResponse,
     ChannelUpdate,
     ChannelStats
 )
-from ..core.security import get_current_user
+from ..core.database import get_db
+from ..core.auth import get_current_user
+from ..models.user import User
 from ..services.telegram import telegram_service
 from ..tasks import update_channel_metrics
 
@@ -23,8 +23,8 @@ async def create_channel(
     current_user: User = Depends(get_current_user)
 ):
     # Check if user has reached channel limit
-    user_channels = db.query(TelegramChannel).filter(
-        TelegramChannel.owner_id == current_user.id
+    user_channels = db.query(Channel).filter(
+        Channel.owner_id == current_user.id
     ).count()
     
     if user_channels >= 10:
@@ -45,13 +45,12 @@ async def create_channel(
     channel_info = await telegram_service.get_channel_info(channel.channel_id)
     
     # Create channel in database
-    db_channel = TelegramChannel(
-        channel_id=channel.channel_id,
-        channel_name=channel_info['title'],
-        channel_username=channel_info['username'],
-        channel_description=channel_info['description'],
-        channel_avatar_url=channel_info['photo'],
-        bot_token=channel.bot_token,
+    db_channel = Channel(
+        username=channel_info['username'],
+        title=channel_info['title'],
+        description=channel_info['description'],
+        category=channel.category,
+        is_monetized=channel.is_monetized,
         owner_id=current_user.id
     )
     
@@ -69,8 +68,8 @@ async def list_channels(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    channels = db.query(TelegramChannel).filter(
-        TelegramChannel.owner_id == current_user.id
+    channels = db.query(Channel).filter(
+        Channel.owner_id == current_user.id
     ).all()
     return channels
 
@@ -80,9 +79,9 @@ async def get_channel(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    channel = db.query(TelegramChannel).filter(
-        TelegramChannel.id == channel_id,
-        TelegramChannel.owner_id == current_user.id
+    channel = db.query(Channel).filter(
+        Channel.id == channel_id,
+        Channel.owner_id == current_user.id
     ).first()
     
     if not channel:
@@ -100,9 +99,9 @@ async def update_channel(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    channel = db.query(TelegramChannel).filter(
-        TelegramChannel.id == channel_id,
-        TelegramChannel.owner_id == current_user.id
+    channel = db.query(Channel).filter(
+        Channel.id == channel_id,
+        Channel.owner_id == current_user.id
     ).first()
     
     if not channel:
@@ -124,9 +123,9 @@ async def delete_channel(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    channel = db.query(TelegramChannel).filter(
-        TelegramChannel.id == channel_id,
-        TelegramChannel.owner_id == current_user.id
+    channel = db.query(Channel).filter(
+        Channel.id == channel_id,
+        Channel.owner_id == current_user.id
     ).first()
     
     if not channel:
@@ -145,9 +144,9 @@ async def get_channel_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    channel = db.query(TelegramChannel).filter(
-        TelegramChannel.id == channel_id,
-        TelegramChannel.owner_id == current_user.id
+    channel = db.query(Channel).filter(
+        Channel.id == channel_id,
+        Channel.owner_id == current_user.id
     ).first()
     
     if not channel:
