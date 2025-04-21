@@ -5,8 +5,16 @@ const { randomUUID, createHash } = require('crypto');
 // Секрет для JWT
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-here';
 
-// Эмуляция базы данных
-const users = [];
+// Эмуляция базы данных - добавляем тестового пользователя для отладки
+const users = [
+  {
+    id: '12345',
+    email: 'test@example.com',
+    hashed_password: createHash('sha256').update('password123').digest('hex'),
+    full_name: 'Test User',
+    is_active: true
+  }
+];
 
 // Хеширование пароля
 function hashPassword(password) {
@@ -21,24 +29,27 @@ function generateTokens(userId) {
 }
 
 exports.handler = async function(event, context) {
+  // Для отладки, логируем запрос
+  console.log('Request path:', event.path);
+  console.log('Request method:', event.httpMethod);
+  console.log('Request headers:', JSON.stringify(event.headers));
+  
   // Разрешенные домены (добавить здесь все нужные домены)
   const allowedOrigins = [
     'https://webpub1.netlify.app',
     'https://www.webpub1.netlify.app',
     'http://localhost:3000',
-    'http://localhost:8888'
+    'http://localhost:8888',
+    '*'
   ];
   
   // Получаем Origin из запроса
-  const origin = event.headers.origin || event.headers.Origin || '';
+  const origin = event.headers.origin || event.headers.Origin || '*';
   
-  // Проверяем, разрешен ли домен
-  const isAllowedOrigin = allowedOrigins.includes(origin);
-  
-  // CORS заголовки с динамическим Origin
+  // CORS заголовки
   const headers = {
-    'Access-Control-Allow-Origin': isAllowedOrigin ? origin : allowedOrigins[0],
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Credentials': 'true',
     'Content-Type': 'application/json'
@@ -48,7 +59,7 @@ exports.handler = async function(event, context) {
   if (event.httpMethod === 'OPTIONS') {
     console.log('Обработка preflight запроса');
     return {
-      statusCode: 204, // No content
+      statusCode: 204,
       headers
     };
   }
@@ -56,9 +67,37 @@ exports.handler = async function(event, context) {
   const path = event.path.replace('/.netlify/functions/api', '');
   
   try {
+    // Тестовый эндпоинт для проверки 
+    if (path === '/test' && event.httpMethod === 'GET') {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ 
+          message: 'API работает!',
+          timestamp: new Date().toISOString(),
+          users_count: users.length
+        })
+      };
+    }
+    
     // Регистрация
     if (path === '/auth/signup' && event.httpMethod === 'POST') {
-      const { email, password, full_name } = JSON.parse(event.body);
+      console.log('Обработка запроса регистрации');
+      
+      let parsedBody;
+      try {
+        parsedBody = JSON.parse(event.body);
+        console.log('Данные регистрации:', JSON.stringify(parsedBody));
+      } catch (e) {
+        console.error('Ошибка при разборе JSON', e);
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ detail: 'Invalid JSON body' })
+        };
+      }
+      
+      const { email, password, full_name } = parsedBody;
       
       // Проверяем, существует ли уже пользователь
       const existingUser = users.find(u => u.email === email);
@@ -82,6 +121,8 @@ exports.handler = async function(event, context) {
         is_active: true
       });
       
+      console.log('Пользователь создан:', email);
+      
       // Возвращаем информацию о пользователе (без пароля)
       return {
         statusCode: 201,
@@ -102,6 +143,7 @@ exports.handler = async function(event, context) {
       let parsedBody;
       try {
         parsedBody = JSON.parse(event.body);
+        console.log('Данные логина:', JSON.stringify(parsedBody));
       } catch (e) {
         console.error('Ошибка при разборе JSON', e);
         return {
@@ -114,6 +156,7 @@ exports.handler = async function(event, context) {
       const { username, password } = parsedBody;
       
       if (!username || !password) {
+        console.log('Отсутствуют обязательные поля');
         return {
           statusCode: 400,
           headers,
@@ -123,6 +166,8 @@ exports.handler = async function(event, context) {
       
       // Находим пользователя
       const user = users.find(u => u.email === username);
+      console.log('Найден пользователь:', user ? user.email : 'not found');
+      
       if (!user || user.hashed_password !== hashPassword(password)) {
         return {
           statusCode: 401,
@@ -135,6 +180,8 @@ exports.handler = async function(event, context) {
       
       // Генерируем токены
       const { accessToken, refreshToken } = generateTokens(user.id);
+      
+      console.log('Успешный вход:', username);
       
       return {
         statusCode: 200,
@@ -149,9 +196,24 @@ exports.handler = async function(event, context) {
     
     // Сброс пароля
     if (path === '/auth/forgot-password' && event.httpMethod === 'POST') {
-      const { email } = JSON.parse(event.body);
+      console.log('Обработка запроса сброса пароля');
+      
+      let parsedBody;
+      try {
+        parsedBody = JSON.parse(event.body);
+      } catch (e) {
+        console.error('Ошибка при разборе JSON', e);
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ detail: 'Invalid JSON body' })
+        };
+      }
+      
+      const { email } = parsedBody;
       
       // В реальном сценарии здесь должна быть отправка email
+      console.log('Запрос сброса пароля для:', email);
       
       return {
         statusCode: 200,
@@ -164,9 +226,12 @@ exports.handler = async function(event, context) {
     
     // Эмуляция получения информации о пользователе
     if (path === '/auth/me' && event.httpMethod === 'GET') {
+      console.log('Обработка запроса GET /auth/me');
+      
       // Проверка авторизации
       const authHeader = event.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        console.log('Отсутствует токен авторизации');
         return {
           statusCode: 401,
           headers,
@@ -182,9 +247,12 @@ exports.handler = async function(event, context) {
         const decoded = jwt.verify(token, JWT_SECRET);
         const userId = decoded.sub;
         
+        console.log('Токен верифицирован для пользователя:', userId);
+        
         // Находим пользователя
         const user = users.find(u => u.id === userId);
         if (!user) {
+          console.log('Пользователь не найден:', userId);
           return {
             statusCode: 404,
             headers,
@@ -204,6 +272,7 @@ exports.handler = async function(event, context) {
           })
         };
       } catch (error) {
+        console.error('Ошибка верификации токена:', error);
         return {
           statusCode: 401,
           headers,
@@ -213,10 +282,15 @@ exports.handler = async function(event, context) {
     }
 
     // Обработка не найденных маршрутов
+    console.log('Маршрут не найден:', path);
     return {
       statusCode: 404,
       headers,
-      body: JSON.stringify({ detail: 'Not Found' })
+      body: JSON.stringify({ 
+        detail: 'Not Found',
+        path: path,
+        method: event.httpMethod
+      })
     };
     
   } catch (error) {
@@ -226,7 +300,10 @@ exports.handler = async function(event, context) {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ detail: 'Internal Server Error' })
+      body: JSON.stringify({ 
+        detail: 'Internal Server Error',
+        message: error.message
+      })
     };
   }
 }; 
