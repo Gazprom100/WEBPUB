@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia'
-import axios from 'axios'
+import { authApi } from '@/services/api'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
     token: localStorage.getItem('token'),
-    isAuthenticated: false,
+    isAuthenticated: !!localStorage.getItem('token'),
     loading: false,
     error: null
   }),
@@ -22,25 +22,26 @@ export const useAuthStore = defineStore('auth', {
       this.error = null
       
       try {
-        const response = await axios.post(`${import.meta.env.VITE_API_URL}/auth/login`, {
-          email,
+        const response = await authApi.login({
+          username: email, // Netlify Functions использует username для логина
           password
         })
 
-        const { token, user } = response.data
+        const { access_token, refresh_token } = response.data
 
-        this.token = token
-        this.user = user
+        this.token = access_token
         this.isAuthenticated = true
 
-        if (remember) {
-          localStorage.setItem('token', token)
+        // Сохраняем токены
+        localStorage.setItem('token', access_token)
+        if (refresh_token) {
+          localStorage.setItem('refresh_token', refresh_token)
         }
 
-        // Устанавливаем токен для всех последующих запросов
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+        // Загружаем данные пользователя
+        await this.fetchUserProfile()
       } catch (error) {
-        this.error = error.response?.data?.message || 'Ошибка при входе'
+        this.error = error.response?.data?.detail || 'Ошибка при входе'
         throw error
       } finally {
         this.loading = false
@@ -48,39 +49,74 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async logout() {
+      this.token = null
+      this.user = null
+      this.isAuthenticated = false
+      localStorage.removeItem('token')
+      localStorage.removeItem('refresh_token')
+    },
+
+    async fetchUserProfile() {
+      if (!this.token) return
+
       try {
-        await axios.post(`${import.meta.env.VITE_API_URL}/auth/logout`)
+        const response = await authApi.getUser()
+        this.user = response.data
+        this.isAuthenticated = true
+        return this.user
       } catch (error) {
-        console.error('Ошибка при выходе:', error)
-      } finally {
-        this.token = null
-        this.user = null
-        this.isAuthenticated = false
-        localStorage.removeItem('token')
-        delete axios.defaults.headers.common['Authorization']
+        if (error.response?.status === 401) {
+          // Токен недействителен, разлогиниваем пользователя
+          this.logout()
+        }
+        throw error
       }
     },
 
     async checkAuth() {
-      if (!this.token) return
+      if (!this.token) return false
 
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/auth/me`)
-        this.user = response.data
-        this.isAuthenticated = true
-        axios.defaults.headers.common['Authorization'] = `Bearer ${this.token}`
+        await this.fetchUserProfile()
+        return true
       } catch (error) {
-        this.token = null
-        this.user = null
-        this.isAuthenticated = false
-        localStorage.removeItem('token')
-        delete axios.defaults.headers.common['Authorization']
+        return false
+      }
+    },
+
+    async register(userData) {
+      this.loading = true
+      this.error = null
+      
+      try {
+        const response = await authApi.signup(userData)
+        return response.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Ошибка при регистрации'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async forgotPassword(email) {
+      this.loading = true
+      this.error = null
+      
+      try {
+        const response = await authApi.forgotPassword(email)
+        return response.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Ошибка при запросе сброса пароля'
+        throw error
+      } finally {
+        this.loading = false
       }
     },
 
     async updateProfile(userData) {
       try {
-        const response = await axios.put(`${import.meta.env.VITE_API_URL}/auth/profile`, userData)
+        const response = await authApi.updateProfile(userData)
         this.user = response.data
         return response.data
       } catch (error) {
