@@ -31,6 +31,36 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/add-channel',
+      name: 'add-channel',
+      component: () => import('../views/AddChannelView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/channels/:id/feed',
+      name: 'channel-feed',
+      component: () => import('../views/ChannelFeedView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/channels/:id/analytics',
+      name: 'channel-analytics',
+      component: () => import('../views/ChannelAnalyticsView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/channels/:id/posts/new',
+      name: 'create-channel-post',
+      component: () => import('../views/PostEditorView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/channels/:id/posts/edit/:postId',
+      name: 'edit-channel-post',
+      component: () => import('../views/PostEditorView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/channels/:id',
       name: 'channel-detail',
       component: () => import('../views/ChannelDetailView.vue'),
